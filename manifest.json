@@ -1,6 +1,6 @@
 {
-	"id": "findmybook",
-	"name": "书放哪了",
+	"id": "bookmanager",
+	"name": "BookManager",
 	"version": "1.0.0",
 	"minAppVersion": "1.4.4",
 	"description": "「书放哪了」小程序同步：图书录入｜书架整理｜阅读笔记.",
