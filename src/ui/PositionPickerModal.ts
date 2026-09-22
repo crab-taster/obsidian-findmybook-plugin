@@ -10,12 +10,6 @@ import {
 	upsertPayloadBlock,
 } from '../noteMeta';
 
-/**
- * 摆放位置选择器。
- * 后端位置是结构化的（bookshelfId + gridId + bookIndexInGrid），没有「文本→ID」的反查，
- * 所以这里基于上次同步缓存的书架层/格结构，让用户点选，写回笔记的摆放位置相关字段。
- * 写回后该笔记相对基线即产生「位置改动」，可用反向同步回传。
- */
 export class PositionPickerModal extends Modal {
 	private plugin: FindMyBookPlugin;
 	private file: TFile;
@@ -41,7 +35,6 @@ export class PositionPickerModal extends Modal {
 			return;
 		}
 
-		// 当前位置藏在正文的隐藏载荷里（属性面板里不显示这些机器字段）
 		const cur = await this.readCurrentPayload();
 		const curShelf = cur.bookshelfId;
 		const curGrid = cur.gridId;
@@ -65,7 +58,6 @@ export class PositionPickerModal extends Modal {
 			this.indexEl = dd.selectEl;
 		});
 
-		// 初始化层/格与位置
 		this.populateGrids(curGrid, curIndex);
 
 		new Setting(contentEl).addButton((btn) =>
@@ -78,7 +70,6 @@ export class PositionPickerModal extends Modal {
 		);
 	}
 
-	/** 读出笔记的隐藏载荷（书籍ID + 当前位置）；读取/解析失败按空载荷处理 */
 	private async readCurrentPayload(): Promise<NotePayload> {
 		try {
 			return parsePayload(await this.app.vault.cachedRead(this.file));
@@ -108,7 +99,6 @@ export class PositionPickerModal extends Modal {
 		const grid = this.currentGrid();
 		this.indexEl.empty();
 		if (!shelf || !grid) return;
-		// 格子内可选位置：1..bookCount+1（1-based；保存时转 0-based）
 		const max = (grid.bookCount ?? 0) + 1;
 		for (let i = 1; i <= max; i++) {
 			this.indexEl.createEl('option', { value: String(i), text: `第 ${i} 本` });
@@ -133,9 +123,8 @@ export class PositionPickerModal extends Modal {
 			new Notice('请选择书架与层/格');
 			return;
 		}
-		const pos1 = Number(this.indexEl.value); // 1-based
+		const pos1 = Number(this.indexEl.value);
 		const index0 = pos1 - 1;
-		// 与后端 buildLocationString 同构（书架视图「按书架筛选」就是从这里剥书架名）
 		const location = locationString(
 			shelf.name,
 			grid.layerIndex,
@@ -149,7 +138,6 @@ export class PositionPickerModal extends Modal {
 				fm[FM.location] = location;
 			},
 		);
-		// 位置写进正文的隐藏载荷；不含书籍ID，函数内部会保留原值
 		await this.app.vault.process(this.file, (text) =>
 			upsertPayloadBlock(text, {
 				bookshelfId: shelf.id,

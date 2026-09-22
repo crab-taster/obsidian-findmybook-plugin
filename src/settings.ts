@@ -2,16 +2,11 @@ import { App, PluginSettingTab, Setting } from 'obsidian';
 import type FindMyBookPlugin from './main';
 
 export interface FindMyBookSettings {
-	/** 「书放哪了」后端地址，例如 https://your-findmybook-server.example.com */
-	serverUrl: string;
-	/** 藏书笔记写入 vault 的文件夹，留空则写仓库根 */
 	syncFolder: string;
-	/** 上次同步时间戳（毫秒），null 表示从未同步 */
 	lastSyncAt: number | null;
 }
 
 export const DEFAULT_SETTINGS: FindMyBookSettings = {
-	serverUrl: '',
 	syncFolder: '书放哪了',
 	lastSyncAt: null,
 };
@@ -27,19 +22,6 @@ export class FindMyBookSettingTab extends PluginSettingTab {
 	display(): void {
 		const { containerEl } = this;
 		containerEl.empty();
-
-		new Setting(containerEl)
-			.setName('服务器地址')
-			.setDesc('「书放哪了」后端地址，例如 https://your-findmybook-server.example.com')
-			.addText((text) =>
-				text
-					.setPlaceholder('https://your-findmybook-server.example.com')
-					.setValue(this.plugin.settings.serverUrl)
-					.onChange(async (value) => {
-						this.plugin.settings.serverUrl = value.trim();
-						await this.plugin.saveSettings();
-					}),
-			);
 
 		new Setting(containerEl)
 			.setName('同步目录')

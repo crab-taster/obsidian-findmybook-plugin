@@ -19,12 +19,10 @@ import { PositionPickerModal } from './PositionPickerModal';
 
 export const VIEW_TYPE_FMB_BOOK_DETAIL = 'fmb-book-detail-view';
 
-/** 详情页状态：只带一个笔记路径，数据全部从笔记里读（离线、和书架视图同源） */
 export interface BookDetailState {
 	path: string;
 }
 
-/** frontmatter 取值转字符串 */
 function s(v: unknown): string {
 	if (v === null || v === undefined) return '';
 	if (typeof v === 'string') return v;
@@ -32,7 +30,6 @@ function s(v: unknown): string {
 	return '';
 }
 
-/** frontmatter 的列表字段（书标签）统一成字符串数组 */
 function strList(v: unknown): string[] {
 	if (!Array.isArray(v)) return [];
 	const out: string[] = [];
@@ -42,7 +39,6 @@ function strList(v: unknown): string[] {
 	return out;
 }
 
-/** 从笔记正文提取 `## 简介` 段落（到下一个 H2 / 代码块 / 引用块为止） */
 function extractIntro(content: string | null | undefined): string {
 	if (!content) return '';
 	const lines = content.split(/\r?\n/);
@@ -61,13 +57,6 @@ function extractIntro(content: string | null | undefined): string {
 	return out.join('\n').trim();
 }
 
-/**
- * 书籍详情页（参考 weread 的书籍详情布局）：
- * 上半部分是封面 + 书名/作者 + 只读元数据的标签；下半部分是可改的藏书信息，
- * 每个字段用最合适的控件（下拉 / 日期 / 数字 / 多行文本 / 标签编辑器 / 位置选择器）。
- *
- * 改动直接写回笔记 frontmatter；笔记里存的是中文标签，反向同步时再转回后端英文码值。
- */
 export class BookDetailView extends ItemView {
 	plugin: FindMyBookPlugin;
 	private filePath = '';
@@ -184,13 +173,10 @@ export class BookDetailView extends ItemView {
 		});
 	}
 
-	/** 只读元数据：列表形式逐行展示（标签 + 值），不提供任何编辑控件 */
 	private buildReadonly(root: HTMLElement, fm: Record<string, unknown>): void {
 		const section = root.createDiv({ cls: 'fmb-detail-section' });
 		section.createEl('h4', { cls: 'fmb-detail-h4', text: '书籍信息（只读）' });
 
-		// 定价（只读）：主值优先人民币折算值，没有可用汇率时退回原币串并说明未折算；
-		// 脚注给书上印的原价与所用汇率 —— 对齐小程序详情页那两行
 		const listPrice = s(fm[FM.listPrice]);
 		const listPriceOriginal = s(fm[FM.listPriceOriginal]);
 		const listPriceRate = s(fm[FM.listPriceRate]);
@@ -226,7 +212,6 @@ export class BookDetailView extends ItemView {
 			const row = list.createEl('li', { cls: 'fmb-detail-row' });
 			row.createSpan({ cls: 'fmb-detail-row-label', text: label });
 			const valueEl = row.createSpan({ cls: 'fmb-detail-row-value', text: value });
-			// 脚注换行挂在值下面（不再占一列，免得撑坏 label/value 两列布局）
 			if (note) valueEl.createSpan({ cls: 'fmb-detail-row-note', text: note });
 		}
 		if (!any) {
@@ -234,7 +219,6 @@ export class BookDetailView extends ItemView {
 		}
 	}
 
-	/** 简介（只读元数据）：从笔记正文 ## 简介 段落读取并展示 */
 	private async buildIntro(root: HTMLElement, file: TFile): Promise<void> {
 		const section = root.createDiv({ cls: 'fmb-detail-section' });
 		section.createEl('h4', { cls: 'fmb-detail-h4', text: '简介' });
@@ -247,7 +231,6 @@ export class BookDetailView extends ItemView {
 		section.createDiv({ cls: 'fmb-detail-intro', text: intro });
 	}
 
-	/** 可改的藏书信息：按字段语义选控件 */
 	private buildEditable(
 		root: HTMLElement,
 		file: TFile,
@@ -259,7 +242,6 @@ export class BookDetailView extends ItemView {
 			text: '藏书信息（可改，改完用「反向同步」传回小程序）',
 		});
 
-		// 藏书状态 / 书况 / 获取渠道：枚举 → 下拉
 		new Setting(section).setName('藏书状态').addDropdown((dd) => {
 			dd.addOption('', '（未设置）');
 			for (const v of Object.values(STATUS_LABELS)) dd.addOption(v, v);
@@ -267,14 +249,12 @@ export class BookDetailView extends ItemView {
 			dd.onChange((v) => void this.write(file, FM.bookStatus, v));
 		});
 
-		// 阅读状态：阅读旅程派生态，可改（下拉选），反向同步时协调到目标状态
 		new Setting(section)
 			.setName('阅读状态')
 			.addDropdown((dd) => {
 				for (const v of Object.values(READING_STATUS_LABELS)) dd.addOption(v, v);
 				const cur = s(fm[FM.readingStatus]);
 				dd.setValue(cur);
-				// 「还没读」是派生默认态（无旅程即未读），不是可设定的目标：任何状态都不允许回退到未读
 				for (const opt of Array.from(dd.selectEl.options)) {
 					if (opt.value === READING_STATUS_LABELS.NOT_STARTED) opt.disabled = true;
 				}
@@ -298,19 +278,16 @@ export class BookDetailView extends ItemView {
 				dd.onChange((v) => void this.write(file, FM.acquisitionChannel, v));
 			});
 
-		// 购入日期 → 日期控件
 		new Setting(section)
 			.setName('购入日期')
 			.addText((t) => {
 				t.inputEl.type = 'date';
 				t.setValue(s(fm[FM.collectionDate]));
-				// 日期控件是离散选择，change 即写入，不会像输入框那样每次按键都落盘
 				t.inputEl.addEventListener('change', () => {
 					void this.write(file, FM.collectionDate, t.getValue());
 				});
 			});
 
-		// 购入价格 → 数字控件（失焦时保存，避免逐键写文件）
 		new Setting(section)
 			.setName('购入价格')
 			.setDesc('单位：元')
@@ -323,7 +300,6 @@ export class BookDetailView extends ItemView {
 				});
 			});
 
-		// 备注 → 多行文本（失焦时保存）
 		new Setting(section).setName('备注').addTextArea((t) => {
 			t.setValue(s(fm[FM.remark]));
 			t.inputEl.addEventListener('blur', () => {
@@ -331,14 +307,12 @@ export class BookDetailView extends ItemView {
 			});
 		});
 
-		// 书标签 → 从后端已定义的自定义标签里点选（多选），不能自由输入
 		const tagSetting = new Setting(section).setName('书标签').setDesc(
 			'点选切换（可多选）。标签在小程序「标签管理」里增删，同步后这里就能选到；' +
 				'后端写入时也会校验「标签必须已存在」，所以不接受手填。',
 		);
 		this.buildTagEditor(tagSetting.settingEl, file, strList(fm[FM.tagNames]));
 
-		// 摆放位置 → 复用位置选择器（后端只认三个 ID，不能手填文本）
 		new Setting(section)
 			.setName('摆放位置')
 			.setDesc('后端改位置只认书架/层格/序号三个 ID，用点选而非手填')
@@ -353,11 +327,6 @@ export class BookDetailView extends ItemView {
 			);
 	}
 
-	/**
-	 * 书标签：只列出后端已定义的自定义标签，点击切换选中（多选）。
-	 * 不提供输入框——后端 updateCollection 会校验「标签必须已存在」，手填会回传失败。
-	 * 笔记里若残留不在清单里的标签（历史数据），单独显示出来供移除。
-	 */
 	private buildTagEditor(
 		container: HTMLElement,
 		file: TFile,
@@ -401,10 +370,6 @@ export class BookDetailView extends ItemView {
 		}
 	}
 
-	/**
-	 * 写一个字段回笔记 frontmatter。存的就是笔记里的中文标签/值，
-	 * 反向同步时由 reverse.ts 的 fromLabel 转回后端英文码值。
-	 */
 	private async write(
 		file: TFile,
 		key: string,

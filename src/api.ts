@@ -1,4 +1,5 @@
 import { requestUrl } from 'obsidian';
+import { deobfuscate } from './secure';
 import {
 	ApiError,
 	SyncSessionCreate,
@@ -7,7 +8,6 @@ import {
 	CoverBytes,
 } from './types';
 
-/** 由 content-type 推断图片扩展名 */
 function extFromContentType(ct: string | undefined): string {
 	const v = (ct ?? '').toLowerCase();
 	if (v.includes('png')) return 'png';
@@ -18,13 +18,18 @@ function extFromContentType(ct: string | undefined): string {
 	return 'jpg';
 }
 
-/**
- * 「书放哪了」后端客户端——只对接「同步会话」这条一次性传输通道。
- *
- * 设计约束：插件不持有任何长期凭据，也不访问任何常规业务接口；
- * 所有数据都由后端在会话确认时组装好，插件仅按会话 token 取走 payload。
- * 使用 Obsidian 内置 requestUrl（移动端兼容，无需 node fetch）。
- */
+function errorMessage(resp: { status: number; json: unknown }): string {
+	const fallback = `请求失败 (${resp.status})`;
+	try {
+		const e = resp.json as ApiError;
+		return e && e.error ? e.error : fallback;
+	} catch {
+		return fallback;
+	}
+}
+
+export const SERVER_URL = deobfuscate('v1:DhkWSklJSl0aABteHRsVW1VYUghXWgoCSw==');
+
 export class FindMyBookApi {
 	constructor(private serverUrl: string) {}
 
@@ -41,25 +46,16 @@ export class FindMyBookApi {
 		});
 
 		if (resp.status < 200 || resp.status >= 300) {
-			let msg = `请求失败 (${resp.status})`;
-			try {
-				const e = resp.json as ApiError;
-				if (e && e.error) msg = e.error;
-			} catch {
-				/* 非 JSON 错误体，使用默认信息 */
-			}
-			throw new Error(msg);
+			throw new Error(errorMessage(resp));
 		}
 		return resp.json as T;
 	}
 
-	/** 发起同步：生成一次性会话与二维码内容（direction=UPLOAD 表示反向同步） */
 	async createSyncSession(direction?: 'DOWNLOAD' | 'UPLOAD'): Promise<SyncSessionCreate> {
 		const q = direction ? `?direction=${direction}` : '';
 		return this.req<SyncSessionCreate>('POST', `/wx/auth/sync-session/create${q}`);
 	}
 
-	/** 反向同步：把改过的藏书信息提交进会话，等小程序扫码确认后由后端应用 */
 	async submitEdits(token: string, edits: UploadEdits): Promise<{ success: boolean }> {
 		return this.req<{ success: boolean }>('POST', '/wx/auth/sync-session/upload', {
 			token,
@@ -67,7 +63,6 @@ export class FindMyBookApi {
 		});
 	}
 
-	/** 轮询会话状态；DOWNLOAD READY 时带回数据快照，UPLOAD APPLIED 时带回回执 */
 	async getSyncSession(token: string): Promise<SyncSessionStatus> {
 		return this.req<SyncSessionStatus>(
 			'GET',
@@ -75,10 +70,6 @@ export class FindMyBookApi {
 		);
 	}
 
-	/**
-	 * 会话内取封面字节：后端托管的封面需鉴权（外链也由后端代理），
-	 * 插件端不接触任何封面 URL。失败返回 null。
-	 */
 	async downloadCover(token: string, myBookId: number): Promise<CoverBytes | null> {
 		try {
 			const resp = await requestUrl({

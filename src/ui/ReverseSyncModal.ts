@@ -1,16 +1,11 @@
 import { App, Modal, TFile } from 'obsidian';
 import QRCode from 'qrcode';
 import type FindMyBookPlugin from '../main';
-import { FindMyBookApi } from '../api';
+import { FindMyBookApi, SERVER_URL } from '../api';
 import { BookEdit, ApplyResult } from '../types';
 import { snapshotFromFrontmatter } from '../reverse';
 import { emptyPayload, parsePayload } from '../noteMeta';
 
-/**
- * 反向同步弹窗：把在 Obsidian 里改过的藏书信息回传小程序。
- * 建上传会话 -> 提交改动 -> 二维码 -> 小程序扫码确认 -> 后端应用 -> 显示回执。
- * 与其他同步一样：插件不落任何凭据，一次一码。
- */
 export class ReverseSyncModal extends Modal {
 	private plugin: FindMyBookPlugin;
 	private edits: BookEdit[];
@@ -39,12 +34,7 @@ export class ReverseSyncModal extends Modal {
 		this.tipEl = contentEl.createEl('p', { text: '正在创建上传会话…' });
 		this.statusEl = contentEl.createEl('p', { cls: 'fmb-reverse-status' });
 
-		if (!this.plugin.settings.serverUrl) {
-			this.tipEl.setText('请先在设置中填写后端服务器地址。');
-			return;
-		}
-
-		const api = new FindMyBookApi(this.plugin.settings.serverUrl);
+		const api = new FindMyBookApi(SERVER_URL);
 		void (async () => {
 			try {
 				const session = await api.createSyncSession('UPLOAD');
@@ -98,7 +88,6 @@ export class ReverseSyncModal extends Modal {
 					}
 				})
 				.catch(() => {
-					/* 网络抖动，继续轮询 */
 				});
 		};
 		this.pollTimer = window.setInterval(tick, 2000);
@@ -111,7 +100,6 @@ export class ReverseSyncModal extends Modal {
 			result.items.filter((i) => !i.ok).map((i) => i.myBookId),
 		);
 
-		// 成功项：以当前笔记的藏书信息刷新基线（服务器已接受）
 		for (const item of result.items) {
 			if (!item.ok) continue;
 			const file = this.fileById.get(item.myBookId);
@@ -120,7 +108,6 @@ export class ReverseSyncModal extends Modal {
 				this.app.metadataCache.getFileCache(file)?.frontmatter;
 			if (!fm) continue;
 
-			// 位置在正文的隐藏载荷里；读不到则沿用原基线的位置，避免误清空
 			let payload = emptyPayload();
 			try {
 				payload = parsePayload(await this.app.vault.cachedRead(file));
@@ -140,7 +127,6 @@ export class ReverseSyncModal extends Modal {
 		await this.plugin.saveSettings();
 		this.plugin.refreshBookshelfViews();
 
-		// 失败项逐条列出原因
 		if (failedIds.size > 0) {
 			const lines: string[] = ['失败明细：'];
 			for (const item of result.items) {

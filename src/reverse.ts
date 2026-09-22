@@ -15,10 +15,6 @@ import {
 	parsePayload,
 } from './noteMeta';
 
-/**
- * 可自由编辑的标量字段：frontmatter 字段名 -> 基线字段名。
- * 枚举字段附带「中文标签 -> 英文码」映射，比较与回传前都要先转回后端码值。
- */
 const SCALAR_FIELDS: Array<{
 	fm: string;
 	snap: keyof CollectionSnapshot;
@@ -44,7 +40,6 @@ function num(v: unknown): number | null {
 	return null;
 }
 
-/** frontmatter 的列表字段（书标签等）统一成非空字符串数组 */
 function strList(v: unknown): string[] {
 	if (!Array.isArray(v)) return [];
 	const out: string[] = [];
@@ -55,10 +50,6 @@ function strList(v: unknown): string[] {
 	return out;
 }
 
-/**
- * 从 frontmatter（+ 正文隐藏载荷）读出藏书信息快照，用于成功回传后刷新基线。
- * 枚举值一律转回英文码：基线里存的、以及回传给后端的，都是后端码值。
- */
 export function snapshotFromFrontmatter(
 	fm: Record<string, unknown>,
 	payload: NotePayload,
@@ -79,7 +70,6 @@ export function snapshotFromFrontmatter(
 	};
 }
 
-/** 从笔记正文读出隐藏载荷；读取/解析失败按空载荷处理，不让单张坏笔记打断整次扫描 */
 async function readPayload(app: App, file: TFile): Promise<NotePayload> {
 	try {
 		return parsePayload(await app.vault.cachedRead(file));
@@ -89,16 +79,10 @@ async function readPayload(app: App, file: TFile): Promise<NotePayload> {
 }
 
 export interface ReverseScanResult {
-	/** 需要回传的改动（每本一条） */
 	edits: BookEdit[];
-	/** myBookId -> 笔记文件（成功后刷新基线用） */
 	fileById: Map<number, TFile>;
 }
 
-/**
- * 扫描同步目录下的藏书笔记，对比基线，收集用户改过的藏书信息。
- * 只对「有基线的书」做 diff（否则无从判断哪些是改动），位置改动要求三个 ID 齐全。
- */
 export async function collectEdits(
 	app: App,
 	folder: string,
@@ -116,14 +100,12 @@ export async function collectEdits(
 		const fm = app.metadataCache.getFileCache(file)?.frontmatter;
 		if (!fm || !isFindMyBookNote(fm)) continue;
 
-		// 书籍ID 与位置都在正文的隐藏载荷里（旧笔记回退到原来的 frontmatter 属性）
 		const payload = await readPayload(app, file);
 		const myBookId = payload.bookId ?? num(fm[LEGACY_BOOK_ID_KEY]);
 		if (myBookId == null) continue;
 		const base = baseline[String(myBookId)];
-		if (!base) continue; // 无基线，跳过以免误推
+		if (!base) continue;
 
-		// 标量字段（枚举值先转回英文码，再与基线比较）
 		const changed: Record<string, string> = {};
 		for (const field of SCALAR_FIELDS) {
 			const cur = field.labels
@@ -132,24 +114,20 @@ export async function collectEdits(
 			if (cur !== str(base[field.snap])) changed[field.snap] = cur;
 		}
 
-		// 标签（列表）
 		const curTags = strList(fm[FM.tagNames]);
 		if (JSON.stringify(curTags) !== JSON.stringify(base.tagNames)) {
 			changed.tagNames = curTags.join(',');
 		}
 
-		// 状态
 		const curStatus = fromLabel(STATUS_LABELS, str(fm[FM.bookStatus]));
 		const status = curStatus && curStatus !== str(base.bookStatus) ? curStatus : undefined;
 
-		// 阅读状态（派生态：仅在基线已记录该字段时比对，避免旧基线（无该字段）误报）
 		let reading: string | undefined;
 		if (Object.prototype.hasOwnProperty.call(base, 'readingStatus')) {
 			const curReading = fromLabel(READING_STATUS_LABELS, str(fm[FM.readingStatus]));
 			reading = curReading !== str(base.readingStatus) ? curReading : undefined;
 		}
 
-		// 位置（同样来自隐藏载荷；三个 ID 齐备才算有效改动）
 		const sid = payload.bookshelfId;
 		const gid = payload.gridId;
 		const idx = payload.bookIndexInGrid;

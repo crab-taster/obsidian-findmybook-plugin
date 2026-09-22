@@ -1,0 +1,441 @@
+.fmb-bookshelf-root {
+	padding: 12px;
+	height: 100%;
+	box-sizing: border-box;
+	overflow-y: auto;
+	background: var(--background-primary);
+}
+
+.fmb-toolbar {
+	position: sticky;
+	top: 0;
+	z-index: 2;
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	margin: 0 -12px 14px;
+	padding: 10px 12px;
+	background: var(--background-primary);
+	border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.fmb-toolbar-title {
+	display: flex;
+	align-items: baseline;
+	gap: 8px;
+	margin-bottom: 10px;
+}
+
+.fmb-title-text {
+	font-size: 1.1em;
+	font-weight: 600;
+	color: var(--text-normal);
+}
+
+.fmb-count {
+	font-size: 0.8em;
+	color: var(--text-muted);
+}
+
+.fmb-toolbar-actions {
+	display: flex;
+	gap: 8px;
+	align-items: center;
+	flex-wrap: wrap;
+}
+
+.fmb-search {
+	flex: 1 1 160px;
+	min-width: 120px;
+	background: var(--background-modifier-form-field);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 6px;
+	color: var(--text-normal);
+	padding: 6px 8px;
+}
+
+.fmb-filter {
+	background: var(--background-modifier-form-field);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 6px;
+	color: var(--text-normal);
+	padding: 6px 8px;
+}
+
+.fmb-toolbar-filters {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px;
+}
+.fmb-toolbar-filters .fmb-filter {
+	flex: 1 1 110px;
+	min-width: 96px;
+	font-size: 0.9em;
+}
+
+.fmb-toolbar-filters .fmb-filter-shelf {
+	flex: 1.4 1 150px;
+}
+
+.fmb-btn {
+	background: var(--background-modifier-form-field);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 6px;
+	color: var(--text-normal);
+	padding: 6px 12px;
+	cursor: pointer;
+	font-size: 0.9em;
+}
+
+.fmb-btn:hover {
+	background: var(--background-modifier-hover);
+}
+
+.fmb-btn-primary {
+	background: var(--interactive-accent);
+	border-color: var(--interactive-accent);
+	color: var(--text-on-accent);
+}
+
+.fmb-btn-primary:hover {
+	background: var(--interactive-accent-hover);
+}
+
+.fmb-detail-root {
+	padding: 14px 16px 24px;
+	background: var(--background-primary);
+}
+
+.fmb-detail-empty {
+	color: var(--text-muted);
+	padding: 24px 0;
+}
+
+.fmb-detail-header {
+	display: flex;
+	gap: 14px;
+	align-items: flex-start;
+	margin-bottom: 18px;
+}
+
+.fmb-detail-cover {
+	flex: 0 0 auto;
+	width: 92px;
+}
+
+.fmb-detail-cover-img {
+	width: 92px;
+	border-radius: 6px;
+	display: block;
+}
+
+.fmb-detail-cover-placeholder {
+	width: 92px;
+	height: 128px;
+	border-radius: 6px;
+	background: var(--background-secondary);
+	color: var(--text-muted);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	font-size: 1.6em;
+}
+
+.fmb-detail-info {
+	flex: 1 1 auto;
+	min-width: 0;
+}
+
+.fmb-detail-title {
+	font-size: 1.25em;
+	font-weight: 600;
+	color: var(--text-normal);
+	line-height: 1.35;
+}
+
+.fmb-detail-sub {
+	margin-top: 4px;
+	color: var(--text-normal);
+}
+
+.fmb-detail-file {
+	margin-top: 6px;
+	font-size: 0.85em;
+	color: var(--text-faint);
+}
+
+.fmb-detail-section {
+	margin-bottom: 18px;
+}
+
+.fmb-detail-h4 {
+	margin: 0 0 10px;
+	font-size: 0.95em;
+	font-weight: 600;
+	color: var(--text-muted);
+	border-bottom: 1px solid var(--background-modifier-border);
+	padding-bottom: 6px;
+}
+
+.fmb-detail-intro {
+	font-size: 0.92em;
+	line-height: 1.7;
+	color: var(--text-normal);
+	white-space: pre-wrap;
+	overflow-wrap: anywhere;
+}
+
+.fmb-detail-list {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 6px;
+	overflow: hidden;
+}
+
+.fmb-detail-row {
+	display: flex;
+	align-items: baseline;
+	gap: 10px;
+	padding: 7px 10px;
+	font-size: 0.9em;
+}
+
+.fmb-detail-row + .fmb-detail-row {
+	border-top: 1px solid var(--background-modifier-border);
+}
+
+.fmb-detail-row-label {
+	flex: 0 0 72px;
+	color: var(--text-faint);
+	font-size: 0.85em;
+}
+
+.fmb-detail-row-value {
+	flex: 1 1 auto;
+	color: var(--text-normal);
+	overflow-wrap: anywhere;
+}
+
+.fmb-detail-row-note {
+	display: block;
+	margin-top: 2px;
+	color: var(--text-faint);
+	font-size: 0.9em;
+}
+
+.fmb-detail-empty {
+	color: var(--text-faint);
+	font-size: 0.9em;
+}
+
+.fmb-tag-editor {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 6px;
+	width: 100%;
+	padding-top: 4px;
+}
+
+.fmb-tag {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	padding: 3px 8px;
+	border-radius: 999px;
+	background: var(--background-secondary);
+	border: 1px solid var(--background-modifier-border);
+	font-size: 0.85em;
+	color: var(--text-normal);
+}
+
+.fmb-tag-remove {
+	cursor: pointer;
+	color: var(--text-faint);
+	padding: 0 2px;
+}
+
+.fmb-tag-remove:hover {
+	color: var(--text-normal);
+}
+
+.fmb-tag-option {
+	cursor: pointer;
+	color: var(--text-muted);
+}
+
+.fmb-tag-option:hover {
+	color: var(--text-normal);
+	border-color: var(--interactive-accent);
+}
+
+.fmb-tag-option.is-selected {
+	color: var(--text-on-accent);
+	background: var(--interactive-accent);
+	border-color: var(--interactive-accent);
+}
+
+.fmb-tag-unknown {
+	border-color: var(--color-red);
+}
+
+.fmb-tag-empty {
+	color: var(--text-faint);
+	font-size: 0.85em;
+}
+
+.fmb-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+	gap: 14px;
+}
+
+.fmb-card {
+	position: relative;
+	background: var(--background-secondary);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 10px;
+	overflow: hidden;
+	cursor: pointer;
+	transition: transform 0.12s ease, box-shadow 0.12s ease, border-color 0.12s ease;
+}
+
+.fmb-card:hover {
+	transform: translateY(-2px);
+	box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
+	border-color: var(--interactive-accent);
+}
+
+.fmb-card-cover {
+	position: relative;
+	width: 100%;
+	aspect-ratio: 3 / 4;
+	background: var(--background-modifier-border);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	overflow: hidden;
+}
+
+.fmb-card-img {
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+	display: block;
+}
+
+.fmb-card-cover-placeholder {
+	font-size: 2.6em;
+	font-weight: 700;
+	color: var(--text-faint);
+}
+
+.fmb-card-badge {
+	position: absolute;
+	top: 6px;
+	left: 6px;
+	padding: 2px 7px;
+	font-size: 0.72em;
+	border-radius: 999px;
+	background: var(--background-primary);
+	color: var(--text-normal);
+	border: 1px solid var(--background-modifier-border);
+	backdrop-filter: blur(2px);
+}
+
+.fmb-card-badge-reading {
+	left: auto;
+	right: 6px;
+	color: var(--color-purple);
+	border-color: var(--color-purple);
+}
+
+.fmb-card-badge[data-status='在架'] {
+	color: var(--color-green);
+	border-color: var(--color-green);
+}
+.fmb-card-badge[data-status='出借'] {
+	color: var(--color-blue);
+	border-color: var(--color-blue);
+}
+.fmb-card-badge[data-status='赠送'] {
+	color: var(--color-purple);
+	border-color: var(--color-purple);
+}
+.fmb-card-badge[data-status='卖出'] {
+	color: var(--color-orange);
+	border-color: var(--color-orange);
+}
+.fmb-card-badge[data-status='遗失'] {
+	color: var(--color-red);
+	border-color: var(--color-red);
+}
+
+.fmb-card-body {
+	padding: 8px 10px 10px;
+	display: flex;
+	flex-direction: column;
+	gap: 3px;
+}
+
+.fmb-card-title {
+	font-size: 0.92em;
+	font-weight: 600;
+	color: var(--text-normal);
+	line-height: 1.3;
+	display: -webkit-box;
+	-webkit-line-clamp: 2;
+	-webkit-box-orient: vertical;
+	overflow: hidden;
+}
+
+.fmb-card-author {
+	font-size: 0.78em;
+	color: var(--text-muted);
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.fmb-card-location {
+	font-size: 0.74em;
+	color: var(--text-faint);
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.fmb-empty {
+	grid-column: 1 / -1;
+	text-align: center;
+	color: var(--text-muted);
+	padding: 40px 12px;
+	font-size: 0.95em;
+}
+
+.fmb-qr {
+	display: block;
+	margin: 12px auto;
+	width: 240px;
+	height: 240px;
+	border-radius: 8px;
+	background: var(--background-primary);
+	padding: 8px;
+	box-sizing: border-box;
+}
+
+.fmb-position-btn {
+	margin: 6px 0;
+}
+
+.fmb-reverse-status {
+	white-space: pre-wrap;
+	color: var(--text-muted);
+	font-size: 0.92em;
+}
+
+.fmb-reverse-status-error {
+	color: var(--text-error);
+}

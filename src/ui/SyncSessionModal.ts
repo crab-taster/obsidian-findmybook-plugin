@@ -1,13 +1,8 @@
 import { App, Modal } from 'obsidian';
 import QRCode from 'qrcode';
 import type FindMyBookPlugin from '../main';
-import { FindMyBookApi } from '../api';
+import { FindMyBookApi, SERVER_URL } from '../api';
 
-/**
- * 同步会话弹窗（一次性传输通道）。
- * 生成 fmbsync://<token> 二维码 -> 轮询会话状态 -> READY 时取回当次数据快照 -> 交给插件写入 vault。
- * 插件全程不保存任何凭据。
- */
 export class SyncSessionModal extends Modal {
 	private plugin: FindMyBookPlugin;
 	private pollTimer: number | null = null;
@@ -25,12 +20,7 @@ export class SyncSessionModal extends Modal {
 		contentEl.createEl('h3', { text: '同步「书放哪了」' });
 		this.tipEl = contentEl.createEl('p', { text: '正在生成同步二维码…' });
 
-		if (!this.plugin.settings.serverUrl) {
-			this.tipEl.setText('请先在设置中填写后端服务器地址，再发起同步。');
-			return;
-		}
-
-		const api = new FindMyBookApi(this.plugin.settings.serverUrl);
+		const api = new FindMyBookApi(SERVER_URL);
 		api
 			.createSyncSession()
 			.then(async (session) => {
@@ -45,7 +35,6 @@ export class SyncSessionModal extends Modal {
 						},
 					});
 				} else {
-					// 小程序码生成失败：回退文本二维码（小程序内扫码仍可用）
 					const dataUrl = await QRCode.toDataURL(session.qrcodeContent, {
 						margin: 1,
 						width: 240,
@@ -85,7 +74,6 @@ export class SyncSessionModal extends Modal {
 					}
 				})
 				.catch(() => {
-					/* 网络抖动，继续轮询 */
 				});
 		};
 		this.pollTimer = window.setInterval(tick, 2000);

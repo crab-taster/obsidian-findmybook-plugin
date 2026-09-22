@@ -10,7 +10,6 @@ import {
 
 export const VIEW_TYPE_FMB_BOOKSHELF = 'fmb-bookshelf-view';
 
-/** frontmatter 取值转字符串（缺失或非字符串时返回空串） */
 function s(v: unknown): string {
 	if (v === null || v === undefined) return '';
 	if (typeof v === 'string') return v;
@@ -18,7 +17,6 @@ function s(v: unknown): string {
 	return '';
 }
 
-/** 非空、去重、按中文排序（下拉选项用） */
 function uniqSorted(values: string[]): string[] {
 	return Array.from(new Set(values.filter((v) => v !== ''))).sort((a, b) =>
 		a.localeCompare(b, 'zh'),
@@ -27,7 +25,6 @@ function uniqSorted(values: string[]): string[] {
 
 type SortKey = 'title' | 'author' | 'clc' | 'collectionDate';
 
-/** 排序方式：对齐小程序「找书」的排序维度（最近访问/录入时间本地没有，用购入日期替代） */
 const SORT_OPTIONS: Array<{ value: SortKey; label: string }> = [
 	{ value: 'title', label: '按书名' },
 	{ value: 'author', label: '按作者' },
@@ -43,24 +40,15 @@ interface BookCard {
 	isbn: string;
 	category: string;
 	tags: string[];
-	/** 书架名：从「摆放位置」串尾部剥掉层/列/本得到，未上架为空 */
 	shelf: string;
 	location: string;
 	status: string;
 	readingStatus: string;
 	clcNumber: string;
 	collectionDate: string;
-	/** 已下载到 vault 的本地封面路径（封面 URL 不再同步到插件） */
 	localCover: string;
 }
 
-/**
- * 「书放哪了」书架视图：参考 weread 插件的书架网格面板。
- *
- * 读取 vault 中同步目录下的藏书笔记（frontmatter），渲染为可点击的卡片网格。
- * 筛选维度对齐小程序「找书」页：书架 / 关键词 / 分类 / 标签 / 在架状态 / 阅读状态 / 排序，
- * 全部在**本地**完成（数据都在笔记 frontmatter 里，不请求后端）。
- */
 export class BookshelfView extends ItemView {
 	plugin: FindMyBookPlugin;
 	private gridEl!: HTMLElement;
@@ -97,17 +85,12 @@ export class BookshelfView extends ItemView {
 		root.empty();
 		root.addClass('fmb-bookshelf-root');
 
-		// 标题行：滚动时随内容一起滚走。
-		// 关键：它必须**和吸顶区并列**、是滚动容器的直接子元素——sticky 元素只在
-		// 自己父元素的范围内粘，若标题行当父级，吸顶区就只能在标题那点高度里粘，等于失效。
 		const titleWrap = root.createDiv({ cls: 'fmb-toolbar-title' });
 		titleWrap.createSpan({ text: '📚 书放哪了', cls: 'fmb-title-text' });
 		this.countEl = titleWrap.createSpan({ cls: 'fmb-count' });
 
-		// 吸顶区：搜索 + 筛选（同样是滚动容器的直接子元素）
 		this.toolbarEl = root.createDiv({ cls: 'fmb-toolbar' });
 
-		// 第一行：搜索 + 操作
 		const actions = this.toolbarEl.createDiv({ cls: 'fmb-toolbar-actions' });
 
 		this.searchEl = actions.createEl('input', {
@@ -120,7 +103,6 @@ export class BookshelfView extends ItemView {
 			cls: 'fmb-btn fmb-btn-primary',
 			text: '同步',
 		});
-		// 同步会弹出一次性二维码；数据写入完成后 main 会自动刷新本视图
 		syncBtn.addEventListener('click', () => {
 			void this.plugin.sync();
 		});
@@ -134,7 +116,6 @@ export class BookshelfView extends ItemView {
 			void this.refresh();
 		});
 
-		// 第二行：筛选与排序（书架放最前——它是「书放哪了」最粗的一层组织）
 		const filters = this.toolbarEl.createDiv({ cls: 'fmb-toolbar-filters' });
 		this.filterShelfEl = this.makeSelect(filters, '书架');
 		this.filterShelfEl.addClass('fmb-filter-shelf');
@@ -144,7 +125,6 @@ export class BookshelfView extends ItemView {
 		this.filterReadingEl = this.makeSelect(filters, '阅读状态');
 		this.sortEl = this.makeSelect(filters, '排序');
 
-		// 网格容器
 		this.gridEl = root.createDiv({ cls: 'fmb-grid' });
 
 		await this.refresh();
@@ -154,7 +134,6 @@ export class BookshelfView extends ItemView {
 		this.contentEl.empty();
 	}
 
-	/** 建一个下拉（选项由 populateFilters 填充） */
 	private makeSelect(parent: HTMLElement, title: string): HTMLSelectElement {
 		const el = parent.createEl('select', { cls: 'fmb-filter' });
 		el.setAttribute('title', title);
@@ -163,7 +142,6 @@ export class BookshelfView extends ItemView {
 		return el;
 	}
 
-	/** 重新读取 vault 中的藏书笔记 */
 	async refresh(): Promise<void> {
 		this.cards = this.collectBooks();
 		this.populateFilters();
@@ -177,7 +155,6 @@ export class BookshelfView extends ItemView {
 
 		for (const file of mdFiles) {
 			const parentPath = file.parent ? file.parent.path : '';
-			// 只取同步目录直属书籍笔记（排除「笔记」子目录与「书架总览」）
 			if (parentPath !== folder) continue;
 			if (file.name === '书架总览.md') continue;
 
@@ -210,10 +187,7 @@ export class BookshelfView extends ItemView {
 		return cards;
 	}
 
-	/** 填充筛选下拉：书架/分类/标签从库里汇总，在架/阅读状态用固定选项（与小程序一致） */
 	private populateFilters(): void {
-		// 书架优先用上次同步缓存的书架清单（空书架也能选到，便于确认「这个架上一本都没同步」），
-		// 缓存缺失（没同步过）时退回「笔记里解析出的书架」
 		const cachedShelves = this.plugin.shelves.map((sh) => sh.name);
 		this.fillSelect(
 			this.filterShelfEl,
@@ -229,8 +203,6 @@ export class BookshelfView extends ItemView {
 			'全部分类',
 			uniqSorted(this.cards.map((c) => c.category)),
 		);
-		// 标签优先用后端定义的清单（与小程序「找书」一致：列出全部已定义标签），
-		// 老后端没下发时再退回「库里已用到的标签」
 		const definedTags = this.plugin.tags ?? [];
 		this.fillSelect(
 			this.filterTagEl,
@@ -258,7 +230,6 @@ export class BookshelfView extends ItemView {
 		}
 	}
 
-	/** 重填选项并尽量保留原选择 */
 	private fillSelect(
 		el: HTMLSelectElement,
 		allLabel: string,
@@ -330,7 +301,6 @@ export class BookshelfView extends ItemView {
 				);
 				break;
 			case 'collectionDate':
-				// 新→旧；空日期（字符串比较最小）排在最后
 				cards.sort((a, b) => b.collectionDate.localeCompare(a.collectionDate));
 				break;
 			default:
@@ -342,7 +312,6 @@ export class BookshelfView extends ItemView {
 		const el = this.gridEl.createDiv({ cls: 'fmb-card' });
 
 		const coverWrap = el.createDiv({ cls: 'fmb-card-cover' });
-		// 本地封面（离线可见）；封面 URL 不再同步到插件，故无远端回退
 		const src = card.localCover
 			? this.app.vault.adapter.getResourcePath(card.localCover)
 			: '';
@@ -385,12 +354,10 @@ export class BookshelfView extends ItemView {
 		if (card.location)
 			body.createDiv({ cls: 'fmb-card-location', text: '📍 ' + card.location });
 
-		// 左键：进入书籍详情页（右击仍可直接打开原始笔记）
 		el.addEventListener('click', () => {
 			void this.plugin.openBookDetail(card.file);
 		});
 
-		// 右键菜单：快速操作
 		el.addEventListener('contextmenu', (e: MouseEvent) => {
 			e.preventDefault();
 			const menu = new Menu();
