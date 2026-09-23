@@ -60,6 +60,7 @@ function extractIntro(content: string | null | undefined): string {
 export class BookDetailView extends ItemView {
 	plugin: FindMyBookPlugin;
 	private filePath = '';
+	private locationWrap?: HTMLElement;
 
 	constructor(leaf: WorkspaceLeaf, plugin: FindMyBookPlugin) {
 		super(leaf);
@@ -202,7 +203,6 @@ export class BookDetailView extends ItemView {
 			['装帧', s(fm[FM.binding])],
 			['纸质', s(fm[FM.paperType])],
 			['定价', listPriceValue, listPriceNote],
-			['摆放位置', s(fm[FM.location])],
 		];
 		const list = section.createEl('ul', { cls: 'fmb-detail-list' });
 		let any = false;
@@ -217,6 +217,9 @@ export class BookDetailView extends ItemView {
 		if (!any) {
 			section.createDiv({ cls: 'fmb-detail-empty', text: '（暂无）' });
 		}
+
+		this.locationWrap = section.createDiv({ cls: 'fmb-detail-row' });
+		this.renderLocation(this.locationWrap, s(fm[FM.location]));
 	}
 
 	private async buildIntro(root: HTMLElement, file: TFile): Promise<void> {
@@ -307,7 +310,7 @@ export class BookDetailView extends ItemView {
 			});
 		});
 
-		const tagSetting = new Setting(section).setName('书标签').setDesc(
+		const tagSetting = new Setting(section).setName('自定义标签').setDesc(
 			'点选切换（可多选）。标签在小程序「标签管理」里增删，同步后这里就能选到；' +
 				'后端写入时也会校验「标签必须已存在」，所以不接受手填。',
 		);
@@ -319,8 +322,8 @@ export class BookDetailView extends ItemView {
 			.addButton((btn) =>
 				btn.setButtonText('选择…').onClick(() => {
 					const modal = new PositionPickerModal(this.app, this.plugin, file);
-					modal.onClose = () => {
-						void this.render();
+					modal.onSaved = (loc) => {
+						if (this.locationWrap) this.renderLocation(this.locationWrap, loc);
 					};
 					modal.open();
 				}),
@@ -333,30 +336,35 @@ export class BookDetailView extends ItemView {
 		current: string[],
 	): void {
 		const wrap = container.createDiv({ cls: 'fmb-tag-editor' });
-		const defined = this.plugin.tags ?? [];
+		this.renderTagEditor(wrap, file, current);
+	}
 
+	private renderTagEditor(wrap: HTMLElement, file: TFile, current: string[]): void {
+		wrap.empty();
+		const defined = this.plugin.tags ?? [];
 		if (defined.length === 0) {
 			wrap.createDiv({
 				cls: 'fmb-tag-empty',
 				text: '还没有自定义标签。在小程序里创建后同步一次即可。',
 			});
-		} else {
-			for (const tag of defined) {
-				const selected = current.includes(tag);
-				const chip = wrap.createDiv({
-					cls: `fmb-tag fmb-tag-option${selected ? ' is-selected' : ''}`,
-					text: tag,
-				});
-				chip.setAttribute('title', selected ? '点击取消' : '点击选用');
-				chip.addEventListener('click', () => {
-					const next = selected
-						? current.filter((t) => t !== tag)
-						: [...current, tag];
-					void this.write(file, FM.tagNames, next).then(() => this.render());
-				});
-			}
+			return;
 		}
-
+		for (const tag of defined) {
+			const selected = current.includes(tag);
+			const chip = wrap.createDiv({
+				cls: `fmb-tag fmb-tag-option${selected ? ' is-selected' : ''}`,
+				text: tag,
+			});
+			chip.setAttribute('title', selected ? '点击取消' : '点击选用');
+			chip.addEventListener('click', () => {
+				const next = selected
+					? current.filter((t) => t !== tag)
+					: [...current, tag];
+				void this.write(file, FM.tagNames, next).then(() =>
+					this.renderTagEditor(wrap, file, next),
+				);
+			});
+		}
 		for (const tag of current.filter((t) => !defined.includes(t))) {
 			const chip = wrap.createDiv({ cls: 'fmb-tag fmb-tag-unknown' });
 			chip.createSpan({ text: tag });
@@ -364,10 +372,19 @@ export class BookDetailView extends ItemView {
 			remove.setAttribute('title', '未定义的标签，移除');
 			remove.addEventListener('click', () => {
 				void this.write(file, FM.tagNames, current.filter((t) => t !== tag)).then(
-					() => this.render(),
+					() => this.renderTagEditor(wrap, file, current.filter((t) => t !== tag)),
 				);
 			});
 		}
+	}
+
+	private renderLocation(wrap: HTMLElement, loc: string): void {
+		wrap.empty();
+		wrap.createSpan({ cls: 'fmb-detail-row-label', text: '摆放位置' });
+		wrap.createSpan({
+			cls: 'fmb-detail-row-value',
+			text: loc || '—',
+		});
 	}
 
 	private async write(

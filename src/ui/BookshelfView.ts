@@ -120,7 +120,7 @@ export class BookshelfView extends ItemView {
 		this.filterShelfEl = this.makeSelect(filters, '书架');
 		this.filterShelfEl.addClass('fmb-filter-shelf');
 		this.filterCategoryEl = this.makeSelect(filters, '分类');
-		this.filterTagEl = this.makeSelect(filters, '书标签');
+		this.filterTagEl = this.makeSelect(filters, '自定义标签');
 		this.filterStatusEl = this.makeSelect(filters, '在架状态');
 		this.filterReadingEl = this.makeSelect(filters, '阅读状态');
 		this.sortEl = this.makeSelect(filters, '排序');

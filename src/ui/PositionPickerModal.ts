@@ -5,6 +5,7 @@ import {
 	FM,
 	NotePayload,
 	emptyPayload,
+	isFindMyBookNote,
 	locationString,
 	parsePayload,
 	upsertPayloadBlock,
@@ -16,6 +17,9 @@ export class PositionPickerModal extends Modal {
 	private shelfEl!: HTMLSelectElement;
 	private gridEl!: HTMLSelectElement;
 	private indexEl!: HTMLSelectElement;
+	private originGridId: number | null = null;
+	private gridCounts = new Map<number, number>();
+	onSaved?: (location: string) => void;
 
 	constructor(app: App, plugin: FindMyBookPlugin, file: TFile) {
 		super(app);
@@ -36,6 +40,8 @@ export class PositionPickerModal extends Modal {
 		}
 
 		const cur = await this.readCurrentPayload();
+		this.originGridId = cur.gridId;
+		await this.scanGridCounts();
 		const curShelf = cur.bookshelfId;
 		const curGrid = cur.gridId;
 		const curIndex = cur.bookIndexInGrid;
@@ -99,14 +105,14 @@ export class PositionPickerModal extends Modal {
 		const grid = this.currentGrid();
 		this.indexEl.empty();
 		if (!shelf || !grid) return;
-		const max = (grid.bookCount ?? 0) + 1;
+		const inThisGrid = this.originGridId != null && this.originGridId === grid.id;
+		const base = this.gridCounts.get(grid.id) ?? 0;
+		const max = Math.max(1, base + (inThisGrid ? 0 : 1));
 		for (let i = 1; i <= max; i++) {
 			this.indexEl.createEl('option', { value: String(i), text: `第 ${i} 本` });
 		}
-		if (preferIndex != null) {
-			const v = String(preferIndex + 1);
-			if (Number(v) <= max) this.indexEl.value = v;
-		}
+		const pick = inThisGrid && preferIndex != null ? preferIndex + 1 : max;
+		this.indexEl.value = String(Math.min(Math.max(pick, 1), max));
 	}
 
 	private currentGrid(): BookGridInfo | undefined {
@@ -146,8 +152,80 @@ export class PositionPickerModal extends Modal {
 			}),
 		);
 
-		new Notice('位置已写入笔记；用「反向同步」回传小程序后生效');
+		const moved = await this.reflowGrid(shelf, grid, index0);
+		new Notice(
+			'位置已写入笔记；用「反向同步」回传小程序后生效' +
+				(moved > 0 ? `（已顺移本格 ${moved} 本书的摆放次序）` : ''),
+		);
+		this.onSaved?.(location);
 		this.close();
+	}
+
+	private async scanGridCounts(): Promise<void> {
+		const counts = new Map<number, number>();
+		for (const file of this.app.vault.getMarkdownFiles()) {
+			const fm = this.app.metadataCache.getFileCache(file)?.frontmatter;
+			if (!fm || !isFindMyBookNote(fm)) continue;
+			const p = parsePayload(await this.app.vault.cachedRead(file));
+			if (p.gridId == null) continue;
+			counts.set(p.gridId, (counts.get(p.gridId) ?? 0) + 1);
+		}
+		this.gridCounts = counts;
+	}
+
+	private async reflowGrid(
+		shelf: BookshelfDetailResponse,
+		grid: BookGridInfo,
+		index0: number,
+	): Promise<number> {
+		const others: Array<{ file: TFile; index: number }> = [];
+		for (const file of this.app.vault.getMarkdownFiles()) {
+			if (file.path === this.file.path) continue;
+			const fm = this.app.metadataCache.getFileCache(file)?.frontmatter;
+			if (!fm || !isFindMyBookNote(fm)) continue;
+			const p = parsePayload(await this.app.vault.cachedRead(file));
+			if (p.gridId !== grid.id) continue;
+			others.push({ file, index: p.bookIndexInGrid ?? 0 });
+		}
+		others.sort((a, b) => a.index - b.index);
+
+		const seq: Array<{ file: TFile; index: number | null }> = others.map((o) => ({
+			file: o.file,
+			index: o.index,
+		}));
+		seq.splice(index0, 0, { file: this.file, index: null });
+
+		let moved = 0;
+		for (let i = 0; i < seq.length; i++) {
+			const entry = seq[i];
+			if (!entry || entry.file.path === this.file.path) continue;
+			const loc = locationString(
+				shelf.name,
+				grid.layerIndex,
+				grid.positionInLayer,
+				i + 1,
+			);
+			const fmNow = this.app.metadataCache.getFileCache(entry.file)?.frontmatter;
+			const raw = fmNow?.[FM.location] as unknown;
+			const before = typeof raw === 'string' ? raw : '';
+			const indexChanged = entry.index !== i;
+			if (!indexChanged && before === loc) continue;
+			if (before !== loc) {
+				await this.app.fileManager.processFrontMatter(
+					entry.file,
+					(fm: Record<string, unknown>) => {
+						fm[FM.location] = loc;
+					},
+				);
+			}
+			if (indexChanged) {
+				await this.app.vault.process(entry.file, (text) =>
+					upsertPayloadBlock(text, { bookIndexInGrid: i }),
+				);
+			}
+			moved++;
+		}
+		return moved;
 	}
 
 	onClose(): void {

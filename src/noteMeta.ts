@@ -62,6 +62,8 @@ export const CHANNEL_LABELS: Record<string, string> = {
 	KONGFUZI: '孔夫子',
 	XIANYU: '闲鱼',
 	DUOZHUAYU: '多抓鱼',
+	XIAOHONGSHU: '小红书',
+	WEIXIN: '微信',
 	BOOKSTORE: '实体书店',
 };
 
